@@ -10,7 +10,7 @@
 # See /LICENSE for more information.
 #
 
-name: OpenWrt Builder gl-mt300n-v2 v23.05.5
+name: OpenWrt Builder Cudy tr3000 big ubi
 
 on:
   repository_dispatch:
@@ -61,7 +61,7 @@ jobs:
       run: |
         ver=$(echo "$REPO_BRANCH" | sed 's/^v//')
         cd openwrt
-        curl -sL https://downloads.openwrt.org/releases/$ver/targets/mediatek/filogic/openwrt-$ver-mediatek-filogic.manifest | grep "^kernel" | sed -e 's/.*-\(.*\)$/\1/' > .vermagic 
+        curl -sL https://downloads.openwrt.org/releases/$ver/targets/mediatek/filogic/openwrt-$ver-mediatek-filogic.manifest | grep '^kernel' | sed -E 's/^kernel - .*~([0-9a-f]+)(-r[0-9]+)?$/\1/' > .vermagic 
         sed -i -e 's/^\(.\).*vermagic$/\1cp $(TOPDIR)\/.vermagic $(LINUX_DIR)\/.vermagic/' include/kernel-defaults.mk
         echo "Extracted version: $ver"
         echo "cat .vermagic"
