@@ -44,21 +44,21 @@ jobs:
         run: |
           echo ${{ steps.getHash.outputs.commitHash }} | tee .commitHash
 
-      - name: Trigger build for cudy tr3000 128M
+      - name: Trigger build for cudy tr3000 112M
         if: steps.cacheHash.outputs.cache-hit != 'true'
         uses: peter-evans/repository-dispatch@v2
         with:
           token: ${{ github.token }}
           event-type: Source Code Update
-          client-payload: '{"device": "128M"}'
+          client-payload: '{"ubi": "112M"}'
 
-      - name: Trigger build for cudy tr3000 128M-Ubootmod
+      - name: Trigger build for cudy tr3000 122M
         if: steps.cacheHash.outputs.cache-hit != 'true'
         uses: peter-evans/repository-dispatch@v2
         with:
           token: ${{ github.token }}
           event-type: Source Code Update
-          client-payload: '{"device": "128M-Ubootmod"}'
+          client-payload: '{"ubi": "122M"}'
 
       - name: Delete workflow runs
         uses: Mattraks/delete-workflow-runs@v2
