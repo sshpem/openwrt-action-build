@@ -14,9 +14,20 @@ name: OpenWrt Builder Cudy tr3000 big ubi
 
 on:
   repository_dispatch:
+    types: [ "Source Code Update" ]
   workflow_dispatch:
+    inputs:
+      ubi:
+        description: 'ubi size'
+        required: true
+        type: choice
+        default: '112M'
+        options:
+          - '112M'
+          - '122M'
 
 env:
+  UBI_SIZE: ${{ github.event.inputs.ubi || github.event.client_payload.ubi }}
   REPO_URL: https://git.openwrt.org/openwrt/openwrt.git
   REPO_BRANCH: v24.10.5
   FEEDS_CONF: feeds.conf.default
