@@ -1,0 +1,118 @@
+#
+# OpenWrt 24.10 Release Checker (repo-file based)
+#
+
+name: OpenWrt Release Checker
+
+env:
+  REPO_OWNER: openwrt
+  REPO_NAME: openwrt
+  RELEASE_PREFIX: v24.10
+  STATE_FILE: .latest_built_openwrt_release
+
+on:
+  workflow_dispatch:
+  schedule:
+    # 每天0:00检查一次
+    - cron: "0 0 * * *"
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout this repo
+        uses: actions/checkout@v4
+
+      # 1️⃣ 获取 OpenWrt 最新 v24.10.x release tag
+      - name: Get latest OpenWrt 24.10 release
+        id: get_release
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const releases = await github.rest.repos.listReleases({
+              owner: process.env.REPO_OWNER,
+              repo: process.env.REPO_NAME,
+              per_page: 100
+            });
+
+            const latest = releases.data.find(r =>
+              r.tag_name.startsWith(process.env.RELEASE_PREFIX)
+            );
+
+            return latest ? latest.tag_name : '';
+          result-encoding: string
+
+      # 2️⃣ 读取上一次已编译的 release
+      - name: Read last built release
+        id: read_state
+        run: |
+          if [ -f "${STATE_FILE}" ]; then
+            LAST_BUILT=$(cat "${STATE_FILE}")
+          else
+            LAST_BUILT=""
+          fi
+          echo "last_built=${LAST_BUILT}" >> $GITHUB_OUTPUT
+
+      # 3️⃣ 判断是否需要编译
+      - name: Compare releases
+        id: compare
+        run: |
+          echo "Checked releases with prefix: $RELEASE_PREFIX"
+          
+          LATEST="${{ steps.get_release.outputs.result }}"
+          LAST="${{ steps.read_state.outputs.last_built }}"
+
+          echo "Latest release : $LATEST"
+          echo "Last built     : $LAST"
+
+          if [ -z "$LATEST" ]; then
+            echo "No release found, exit."
+            exit 0
+          fi
+
+          if [ "$LATEST" = "$LAST" ]; then
+            echo "No new release."
+            echo "build=false" >> $GITHUB_OUTPUT
+          else
+            echo "New release detected!"
+            echo "build=true" >> $GITHUB_OUTPUT
+          fi
+
+      # 4️⃣ 更新仓库状态文件
+      - name: Update built release record
+        if: steps.compare.outputs.build == 'true'
+        run: |
+          echo "${{ steps.get_release.outputs.result }}" > "${STATE_FILE}"
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add "${STATE_FILE}"
+          git commit -m "chore: build OpenWrt ${{ steps.get_release.outputs.result }}"
+          git pull --rebase
+          git push
+
+      # 5️⃣ 触发编译
+      - name: Trigger build for 112M
+        if: steps.compare.outputs.build == 'true'
+        uses: peter-evans/repository-dispatch@v2
+        with:
+          token: ${{ github.token }}
+          event-type: Source Code Update
+          client-payload: |
+            {
+              "ubi": "112M",
+              "commit": "${{ steps.get_release.outputs.result }}"
+            }
+
+      - name: Trigger build for 122M
+        if: steps.compare.outputs.build == 'true'
+        uses: peter-evans/repository-dispatch@v2
+        with:
+          token: ${{ github.token }}
+          event-type: Source Code Update
+          client-payload: |
+            {
+              "ubi": "122M",
+              "commit": "${{ steps.get_release.outputs.result }}"
+            }
